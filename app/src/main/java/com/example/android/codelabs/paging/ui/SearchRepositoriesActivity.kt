@@ -28,12 +28,11 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.RecyclerView
-import com.example.android.codelabs.paging.Injection
+import com.example.android.codelabs.paging.di.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -50,24 +49,24 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         setContentView(view)
 
         // get the view model
-        val viewModel = ViewModelProvider(
-            this, Injection.provideViewModelFactory(
-                context = this,
-                owner = this
-            )
-        )
-            .get(SearchRepositoriesViewModel::class.java)
+//        val viewModel = ViewModelProvider(
+//            this, Injection.provideViewModelFactory(
+//                context = this,
+//                owner = this
+//            )
+//        )
+//            .get(SearchRepositoriesViewModel::class.java)
 
         // add dividers between RecyclerView's row items
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.list.addItemDecoration(decoration)
 
         // bind the state
-        binding.bindState(
-            uiState = viewModel.state,
-            pagingData = viewModel.pagingDataFlow,
-            uiActions = viewModel.accept
-        )
+//        binding.bindState(
+//            uiState = viewModel.state,
+//            pagingData = viewModel.pagingDataFlow,
+//            uiActions = viewModel.accept
+//        )
     }
 
     /**

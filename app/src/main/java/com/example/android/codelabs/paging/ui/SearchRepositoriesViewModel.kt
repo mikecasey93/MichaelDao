@@ -65,9 +65,6 @@ class SearchRepositoriesViewModel @Inject constructor(
      */
     val accept: (UiAction) -> Unit
 
-    private val _repoList = MutableLiveData<Repo>()
-
-    val repoList: LiveData<Repo> = _repoList
 
     init {
         val initialQuery: String = savedStateHandle.get(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY
@@ -149,15 +146,7 @@ class SearchRepositoriesViewModel @Inject constructor(
                     }
                 }
             }
-    fun getRepoList() {
-        viewModelScope.launch{
-            val result = repository.getSearchResultStream("name")
 
-            if result(!=null) {
-                _repoList.postValue(result)
-            }
-        }
-    }
 }
 
 sealed class UiAction {
