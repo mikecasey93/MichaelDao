@@ -16,6 +16,7 @@
 
 package com.example.android.codelabs.paging.data
 
+import android.util.Log
 import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
@@ -28,12 +29,13 @@ import com.example.android.codelabs.paging.db.RepoDatabase
 import com.example.android.codelabs.paging.model.Repo
 import retrofit2.HttpException
 import java.io.IOException
+import javax.inject.Inject
 
 // GitHub page API is 1 based: https://developer.github.com/v3/#pagination
 private const val GITHUB_STARTING_PAGE_INDEX = 1
 
 @OptIn(ExperimentalPagingApi::class)
-class GithubRemoteMediator(
+class GithubRemoteMediator @Inject constructor(
     private val query: String,
     private val service: GithubService,
     private val repoDatabase: RepoDatabase
@@ -47,7 +49,16 @@ class GithubRemoteMediator(
         return InitializeAction.LAUNCH_INITIAL_REFRESH
     }
 
-    override suspend fun load(loadType: LoadType, state: PagingState<Int, Repo>): MediatorResult {
+    override suspend fun load(
+        loadType: LoadType,
+        state: PagingState<Int, Repo>
+    ): MediatorResult {
+
+        val dataExists = isDataInDatabase(query)
+        if (dataExists && loadType == LoadType.REFRESH) {
+            Log.d("GithubRemoteMediator", "This data is already in the database query: $query")
+            return MediatorResult.Success(endOfPaginationReached = true)
+        }
 
         val page = when (loadType) {
             LoadType.REFRESH -> {
@@ -82,9 +93,10 @@ class GithubRemoteMediator(
             }
         }
 
-        val apiQuery = query + IN_QUALIFIER
+        val apiQuery = "$query $IN_QUALIFIER"
 
         try {
+            Log.d("GithubRemoteMediator", "Fetching data for query: $query, page: $page")
             val apiResponse = service.searchRepos(apiQuery, page, state.config.pageSize)
 
             val repos = apiResponse.items
@@ -92,8 +104,8 @@ class GithubRemoteMediator(
             repoDatabase.withTransaction {
                 // clear all tables in the database
                 if (loadType == LoadType.REFRESH) {
-                    repoDatabase.remoteKeysDao().clearRemoteKeys()
-                    repoDatabase.reposDao().clearRepos()
+                    repoDatabase.remoteKeysDao().clearRemoteKeys(query)
+                    repoDatabase.reposDao().clearRepos(query)
                 }
                 val prevKey = if (page == GITHUB_STARTING_PAGE_INDEX) null else page - 1
                 val nextKey = if (endOfPaginationReached) null else page + 1
@@ -102,6 +114,7 @@ class GithubRemoteMediator(
                 }
                 repoDatabase.remoteKeysDao().insertAll(keys)
                 repoDatabase.reposDao().insertAll(repos)
+                Log.d("GithubRemoteMediator", "The data hase been inserted into the database for query: $query")
             }
             return MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
         } catch (exception: IOException) {
@@ -119,6 +132,12 @@ class GithubRemoteMediator(
                 // Get the remote keys of the last item retrieved
                 repoDatabase.remoteKeysDao().remoteKeysRepoId(repo.id)
             }
+    }
+
+    private suspend fun isDataInDatabase(query: String): Boolean {
+        val dbQuery = "%${query.replace(' ', '%')}"
+        val repos = repoDatabase.reposDao().reposByNameSuspend(dbQuery)
+        return repos.isNotEmpty()
     }
 
     private suspend fun getRemoteKeyForFirstItem(state: PagingState<Int, Repo>): RemoteKeys? {

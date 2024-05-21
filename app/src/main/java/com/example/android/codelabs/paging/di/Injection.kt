@@ -17,16 +17,21 @@
 package com.example.android.codelabs.paging.di
 
 import android.content.Context
-import androidx.lifecycle.ViewModelProvider
+import androidx.appcompat.app.AppCompatActivity
 import androidx.savedstate.SavedStateRegistryOwner
 import com.example.android.codelabs.paging.api.GithubService
 import com.example.android.codelabs.paging.data.GithubRepository
 import com.example.android.codelabs.paging.db.RepoDatabase
-import com.example.android.codelabs.paging.ui.ViewModelFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ActivityComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 /**
  * Class that handles object creation.
@@ -36,28 +41,43 @@ import dagger.hilt.components.SingletonComponent
 
 @Module
 @InstallIn(SingletonComponent::class)
-class Injection {
+object Injection {
 
-    /**
-     * Creates an instance of [GithubRepository] based on the [GithubService] and a
-     * [GithubLocalCache]
-     */
     @Provides
-     fun provideGithubRepository(
-        context: Context
-     ): GithubRepository {
-        return GithubRepository(GithubService.create(), RepoDatabase.getInstance(context))
+    fun provideGithubService(): GithubService {
+        val logger = HttpLoggingInterceptor()
+        logger.level = HttpLoggingInterceptor.Level.BASIC
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logger)
+            .build()
+        return Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GithubService::class.java)
     }
 
-    /**
-     * Provides the [ViewModelProvider.Factory] that is then used to get a reference to
-     * [ViewModel] objects.
-     */
     @Provides
-    fun provideViewModelFactory(
-        context: Context,
-        owner: SavedStateRegistryOwner
-    ): ViewModelProvider.Factory {
-        return ViewModelFactory(owner, provideGithubRepository(context))
+    fun provideRepoDatabase(@ApplicationContext context: Context): RepoDatabase {
+        return RepoDatabase.getInstance(context)
+    }
+    @Provides
+     fun provideGithubRepository(
+        service: GithubService,
+        database: RepoDatabase
+     ): GithubRepository {
+        return GithubRepository(service, database)
+    }
+
+}
+
+@Module
+@InstallIn(ActivityComponent::class)
+class SavedStateModule {
+    @Provides
+    fun provideSavedStateRegistryOwner(activity: AppCompatActivity): SavedStateRegistryOwner {
+        return activity
     }
 }

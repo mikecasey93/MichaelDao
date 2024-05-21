@@ -28,6 +28,8 @@ import androidx.paging.map
 import com.example.android.codelabs.paging.data.GithubRepository
 import com.example.android.codelabs.paging.model.Repo
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ActivityContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,6 +49,7 @@ import javax.inject.Inject
  * ViewModel for the [SearchRepositoriesActivity] screen.
  * The ViewModel works with the [GithubRepository] to get the data.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchRepositoriesViewModel @Inject constructor(
     private val repository: GithubRepository,
@@ -67,8 +70,8 @@ class SearchRepositoriesViewModel @Inject constructor(
 
 
     init {
-        val initialQuery: String = savedStateHandle.get(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY
-        val lastQueryScrolled: String = savedStateHandle.get(LAST_QUERY_SCROLLED) ?: DEFAULT_QUERY
+        val initialQuery: String = savedStateHandle.get(LAST_SEARCH_QUERY) ?: ""
+        val lastQueryScrolled: String = savedStateHandle.get(LAST_QUERY_SCROLLED) ?: ""
         val actionStateFlow = MutableSharedFlow<UiAction>()
         val searches = actionStateFlow
             .filterIsInstance<UiAction.Search>()
@@ -119,6 +122,12 @@ class SearchRepositoriesViewModel @Inject constructor(
         super.onCleared()
     }
 
+    fun clearDatabase() {
+        viewModelScope.launch {
+            repository.clearDatabase()
+        }
+    }
+
     private fun searchRepo(queryString: String): Flow<PagingData<UiModel>> =
         repository.getSearchResultStream(queryString)
             .map { pagingData -> pagingData.map { UiModel.RepoItem(it) } }
@@ -155,8 +164,8 @@ sealed class UiAction {
 }
 
 data class UiState(
-    val query: String = DEFAULT_QUERY,
-    val lastQueryScrolled: String = DEFAULT_QUERY,
+    val query: String = "",
+    val lastQueryScrolled: String = "",
     val hasNotScrolledForCurrentSearch: Boolean = false
 )
 
@@ -170,4 +179,3 @@ private val UiModel.RepoItem.roundedStarCount: Int
 
 private const val LAST_QUERY_SCROLLED: String = "last_query_scrolled"
 private const val LAST_SEARCH_QUERY: String = "last_search_query"
-private const val DEFAULT_QUERY = "Android"

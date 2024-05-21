@@ -21,15 +21,20 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.room.withTransaction
 import com.example.android.codelabs.paging.api.GithubService
 import com.example.android.codelabs.paging.db.RepoDatabase
 import com.example.android.codelabs.paging.model.Repo
+import dagger.Provides
+import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.android.qualifiers.ActivityContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
  * Repository class that works with local and remote data sources.
  */
+
 class GithubRepository @Inject constructor(
     private val service: GithubService,
     private val database: RepoDatabase
@@ -44,7 +49,9 @@ class GithubRepository @Inject constructor(
 
         // appending '%' so we can allow other characters to be before and after the query string
         val dbQuery = "%${query.replace(' ', '%')}%"
-        val pagingSourceFactory = { database.reposDao().reposByName(dbQuery) }
+        val pagingSourceFactory = {
+            Log.d("GithubRepository", "Fetching query data from query: $dbQuery")
+            database.reposDao().reposByName(dbQuery) }
 
         @OptIn(ExperimentalPagingApi::class)
         return Pager(
@@ -56,6 +63,13 @@ class GithubRepository @Inject constructor(
             ),
             pagingSourceFactory = pagingSourceFactory
         ).flow
+    }
+
+    suspend fun clearDatabase() {
+        database.withTransaction {
+            database.remoteKeysDao().clearAll()
+            database.reposDao().clearAllRepos()
+        }
     }
 
     companion object {

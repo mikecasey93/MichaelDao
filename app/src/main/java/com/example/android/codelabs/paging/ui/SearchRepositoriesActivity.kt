@@ -16,10 +16,14 @@
 
 package com.example.android.codelabs.paging.ui
 
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
@@ -30,6 +34,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.RecyclerView
 import com.example.android.codelabs.paging.di.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
+import com.example.android.codelabs.paging.network.NetworkChangedReceiver
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,31 +47,28 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class SearchRepositoriesActivity : AppCompatActivity() {
 
+    private val viewModel: SearchRepositoriesViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val binding = ActivitySearchRepositoriesBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
 
-        // get the view model
-//        val viewModel = ViewModelProvider(
-//            this, Injection.provideViewModelFactory(
-//                context = this,
-//                owner = this
-//            )
-//        )
-//            .get(SearchRepositoriesViewModel::class.java)
+        val networkChangeReceiver = NetworkChangedReceiver()
 
-        // add dividers between RecyclerView's row items
+        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+        registerReceiver(networkChangeReceiver, filter)
+
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.list.addItemDecoration(decoration)
 
         // bind the state
-//        binding.bindState(
-//            uiState = viewModel.state,
-//            pagingData = viewModel.pagingDataFlow,
-//            uiActions = viewModel.accept
-//        )
+        binding.bindState(
+            uiState = viewModel.state,
+            pagingData = viewModel.pagingDataFlow,
+            uiActions = viewModel.accept
+        )
     }
 
     /**
@@ -128,9 +130,11 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
     private fun ActivitySearchRepositoriesBinding.updateRepoListFromInput(onQueryChanged: (UiAction.Search) -> Unit) {
         searchRepo.text.trim().let {
-            if (it.isNotEmpty()) {
-                list.scrollToPosition(0)
-                onQueryChanged(UiAction.Search(query = it.toString()))
+            if (it != null) {
+                if (it.isNotEmpty()) {
+                    list.scrollToPosition(0)
+                    onQueryChanged(UiAction.Search(query = it.toString()))
+                }
             }
         }
     }

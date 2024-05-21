@@ -30,12 +30,19 @@ interface RepoDao {
     suspend fun insertAll(repos: List<Repo>)
 
     @Query(
-        "SELECT * FROM repos WHERE " +
-            "name LIKE :queryString OR description LIKE :queryString " +
-            "ORDER BY stars DESC, name ASC"
+        "SELECT * FROM repos WHERE name LIKE :queryString OR description LIKE :queryString ORDER BY stars DESC, name ASC"
     )
     fun reposByName(queryString: String): PagingSource<Int, Repo>
 
+    @Query("SELECT * FROM repos WHERE name LIKE :query")
+    suspend fun reposByNameSuspend(query: String): List<Repo>
+
+    @Query("DELETE FROM repos WHERE name LIKE :query")
+    suspend fun clearRepos(query: String)
     @Query("DELETE FROM repos")
-    suspend fun clearRepos()
+    suspend fun clearAllRepos()
+
+
+
+
 }
